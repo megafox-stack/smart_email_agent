@@ -1,7 +1,7 @@
 import httpx
 
 OLLAMA_URL = "http://127.0.0.1:11434"
-MODEL = "llama2"
+MODEL = "llama3.2:3b"
 
 
 def generate_reply(subject: str, sender: str, body: str) -> str:
@@ -22,12 +22,11 @@ def generate_reply(subject: str, sender: str, body: str) -> str:
     payload = {
         "model": MODEL,
         "prompt": prompt,
-        "temperature": 0.2,
-        "max_length": 512,
+        "stream": False
     }
 
     with httpx.Client(base_url=OLLAMA_URL, timeout=60.0) as client:
-        response = client.post("/api/prompt", json=payload)
+        response = client.post("/api/generate", json=payload)
         response.raise_for_status()
         data = response.json()
 

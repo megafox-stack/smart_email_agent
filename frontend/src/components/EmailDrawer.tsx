@@ -6,6 +6,33 @@ import EmailSummary from './EmailSummary'
 import PhishingDetectionCard from './PhishingDetectionCard'
 import DeadlineCard from './DeadlineCard'
 
+function isHtmlContent(value: string): boolean {
+  return /<!doctype\s+html|<html[\s>]|<body[\s>]|<(div|table|p|br|a|img|span)\b/i.test(value)
+}
+
+function EmailBody({ body }: { body: string }) {
+  if (isHtmlContent(body)) {
+    return (
+      <div className="mt-4 overflow-hidden rounded-xl bg-white">
+        <iframe
+          title="Email message"
+          srcDoc={body}
+          sandbox=""
+          className="h-[500px] w-full border-0 bg-white"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-4 max-h-[500px] overflow-auto rounded-xl bg-slate-950 p-4">
+      <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">
+        {body}
+      </p>
+    </div>
+  )
+}
+
 interface EmailDrawerProps {
   email: Email | null
   onClose: () => void
@@ -73,11 +100,17 @@ export default function EmailDrawer({ email, onClose }: EmailDrawerProps) {
           <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-sm">
             <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Message body</p>
             {loading ? (
-              <div className="mt-2 text-sm text-slate-400">Loading body…</div>
+              <div className="mt-2 text-sm text-slate-400">
+                Loading body…
+              </div>
             ) : error ? (
-              <div className="mt-2 text-sm text-red-300">{error}</div>
+              <div className="mt-2 text-sm text-red-300">
+                {error}
+              </div>
             ) : (
-              <pre className="mt-2 max-h-60 overflow-auto whitespace-pre-wrap text-sm text-slate-100">{(detail as EmailDetail | null)?.body}</pre>
+              <EmailBody
+                body={(detail as EmailDetail | null)?.body ?? ''}
+              />
             )}
           </div>
 
