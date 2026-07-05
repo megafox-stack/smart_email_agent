@@ -1,0 +1,60 @@
+import api from './api'
+
+export interface PhishingResult {
+  riskScore: number
+  classification: string
+  safe: boolean
+  reasons: string[]
+}
+
+const cache = new Map<string, PhishingResult>()
+
+function extractLinks(text: string): string[] {
+  if (!text) return []
+  const regex = /https?:\/\/[^\s"'<>]+/gi
+  const matches = text.match(regex)
+  return matches ? Array.from(new Set(matches)) : []
+}
+
+export async function analyzeEmailPhishing(
+  emailId: string,
+  payload: { sender: string; subject: string; body: string },
+): Promise<PhishingResult> {
+  if (!emailId) {
+    throw new Error('Email ID is required for phishing analysis.')
+  }
+
+  if (cache.has(emailId)) {
+    return cache.get(emailId) as PhishingResult
+  }
+
+  const requestBody = {
+    sender: payload.sender,
+    subject: payload.subject,
+    body: payload.body,
+    links: extractLinks(payload.body),
+  }
+
+  try {
+    const response = await api.post('/api/phishing-check', requestBody)
+    const data = response.data
+
+    if (!data || typeof data.riskScore !== 'number') {
+      throw new Error('Invalid response from phishing check.')
+    }
+
+    const result: PhishingResult = {
+      riskScore: data.riskScore,
+      classification: data.classification || 'Unknown',
+      safe: Boolean(data.safe),
+      reasons: Array.isArray(data.reasons) ? data.reasons : [],
+    }
+
+    cache.set(emailId, result)
+    return result
+  } catch (error: any) {
+    const message =
+      error?.response?.data?.detail || error?.message || 'Unable to analyze this email.'
+    throw new Error(message)
+  }
+}

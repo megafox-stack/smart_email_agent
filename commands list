@@ -1,0 +1,30 @@
+Frontend
+Start:
+
+cd c:\Family\Archit\Projects\python_projects\smart_email_agent\frontend
+npm run dev -- --host 0.0.0.0 --port 5173
+
+
+Stop:
+
+# If running in the same terminal, press Ctrl+C
+# Or stop by killing the Vite process:
+Get-Process vite | Stop-Process -Force
+
+Backend
+Start:
+
+cd c:\Family\Archit\Projects\python_projects\smart_email_agent
+.venv\Scripts\Activate.ps1
+python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+
+Stop:
+
+# If running in the same terminal, press Ctrl+C
+# Or stop by killing the Uvicorn process:
+Get-Process -Name python | Where-Object { $_.CommandLine -match 'uvicorn' } | Stop-Process -Force
+
+Browser
+Open:
+
+Start-Process "http://localhost:5173/"
