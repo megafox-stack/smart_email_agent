@@ -4,11 +4,15 @@ export interface PhishingResult {
   riskScore: number
   classification: string
   safe: boolean
-  reasons: string[] 
+  reasons: string[]
   aiAnalysis: string
+  links: string[]
 }
 
-const cache = new Map<string, PhishingResult>()
+type CachedPhishingResult = { result: PhishingResult; timestamp: number }
+
+const cache = new Map<string, CachedPhishingResult>()
+const CACHE_TTL_MS = 5 * 60 * 1000
 
 function extractLinks(text: string): string[] {
   if (!text) return []
@@ -26,7 +30,12 @@ export async function analyzeEmailPhishing(
   }
 
   if (cache.has(emailId)) {
-    return cache.get(emailId) as PhishingResult
+    const cached = cache.get(emailId)!
+    if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.result
+    }
+
+    cache.delete(emailId)
   }
 
   const requestBody = {
@@ -44,17 +53,19 @@ export async function analyzeEmailPhishing(
       throw new Error('Invalid response from phishing check.')
     }
 
-   const result: PhishingResult = {
-    riskScore: data.riskScore,
-    classification: data.classification || 'Unknown',
-    safe: Boolean(data.safe),
-    reasons: Array.isArray(data.reasons) ? data.reasons : [],
-    aiAnalysis: data.aiAnalysis || '',
- 
-    
-}
+    const rawScore = Number(data.riskScore)
+    const riskScore = Number.isFinite(rawScore) ? Math.max(0, Math.min(100, rawScore)) : 0
 
-    cache.set(emailId, result)
+    const result: PhishingResult = {
+      riskScore,
+      classification: data.classification || 'Unknown',
+      safe: Boolean(data.safe),
+      reasons: Array.isArray(data.reasons) ? data.reasons : [],
+      aiAnalysis: data.aiAnalysis || '',
+      links: Array.isArray(data.links) ? data.links : [],
+    }
+
+    cache.set(emailId, { result, timestamp: Date.now() })
     return result
   } catch (error: any) {
     const message =

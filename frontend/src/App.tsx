@@ -2,9 +2,10 @@ import { useState } from 'react'
 import Dashboard from './pages/Dashboard'
 import BulkEmailPage from './pages/BulkEmail'
 import EventCalendar from './pages/EventCalendar'
+import ContactsPage from './pages/ContactsPage'
 
 function App() {
-  const [activePage, setActivePage] = useState<'Dashboard' | 'Bulk Email' | 'Event Calendar'>('Dashboard')
+  const [activePage, setActivePage] = useState<'Dashboard' | 'Bulk Email' | 'Event Calendar' | 'Contacts'>('Dashboard')
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -37,6 +38,13 @@ function App() {
             >
               Event Calendar
             </button>
+            <button
+              type="button"
+              onClick={() => setActivePage('Contacts')}
+              className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${activePage === 'Contacts' ? 'bg-sky-500 text-white' : 'bg-slate-900 text-slate-200 hover:bg-slate-800'}`}
+            >
+              Contacts
+            </button>
           </div>
         </div>
 
@@ -44,8 +52,10 @@ function App() {
           <Dashboard />
         ) : activePage === 'Bulk Email' ? (
           <BulkEmailPage />
-        ) : (
+        ) : activePage === 'Event Calendar' ? (
           <EventCalendar />
+        ) : (
+          <ContactsPage />
         )}
       </div>
     </div>

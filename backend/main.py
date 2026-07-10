@@ -1,7 +1,10 @@
 from csv import DictReader
 from datetime import datetime, timedelta
 from io import StringIO
+from pathlib import Path
 import re
+import csv
+import uuid
 from re import compile as re_compile
 
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
@@ -12,11 +15,25 @@ from .classifier import classify_emails_payload
 from .auth import create_login_url, fetch_and_store_credentials, get_stored_credentials
 from .gmail_service import get_latest_emails, get_email_by_id, send_email, get_profile
 from .ai_service import analyze_phishing, generate_reply,summarize_email
-from .schemas import BulkUploadResponse, BulkSendRequest, BulkSendResponse, RecipientPreview
+from .schemas import (
+    ActivityLogEntry,
+    BulkActivityRequest,
+    BulkUploadResponse,
+    BulkSendRequest,
+    BulkSendResponse,
+    DashboardStats,
+    Contact,
+    ContactUpsertRequest,
+    RecipientPreview,
+)
 from pydantic import BaseModel
 from typing import List, Optional
 
 app = FastAPI(title="Gmail AI Assistant", version="0.1")
+
+BASE_DIR = Path(__file__).resolve().parent
+CONTACTS_CSV = BASE_DIR / "contacts.csv"
+ACTIVITY_LOG_CSV = BASE_DIR / "activity_log.csv"
 
 # Allow local frontend to access the API during development
 app.add_middleware(
@@ -32,6 +49,54 @@ EMAIL_REGEX = re_compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 def validate_email(email: str) -> bool:
     return bool(EMAIL_REGEX.match(email.strip())) if email else False
+
+
+def _ensure_csv(path: Path, headers: List[str]) -> None:
+    if not path.exists():
+        with path.open("w", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(file, fieldnames=headers)
+            writer.writeheader()
+
+
+def _read_contacts() -> List[Contact]:
+    _ensure_csv(CONTACTS_CSV, ["id", "name", "email"])
+    with CONTACTS_CSV.open("r", newline="", encoding="utf-8") as file:
+        reader = csv.DictReader(file)
+        return [Contact(id=row.get("id", ""), name=row.get("name", ""), email=row.get("email", "")) for row in reader]
+
+
+def _write_contacts(contacts: List[Contact]) -> None:
+    _ensure_csv(CONTACTS_CSV, ["id", "name", "email"])
+    with CONTACTS_CSV.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=["id", "name", "email"])
+        writer.writeheader()
+        for contact in contacts:
+            writer.writerow(contact.model_dump())
+
+
+def _read_activity_log() -> List[ActivityLogEntry]:
+    _ensure_csv(ACTIVITY_LOG_CSV, ["id", "recipient", "subject", "status", "timestamp", "errorMessage"])
+    with ACTIVITY_LOG_CSV.open("r", newline="", encoding="utf-8") as file:
+        reader = csv.DictReader(file)
+        return [
+            ActivityLogEntry(
+                id=row.get("id", ""),
+                recipient=row.get("recipient", ""),
+                subject=row.get("subject", ""),
+                status=row.get("status", ""),
+                timestamp=row.get("timestamp", ""),
+                errorMessage=row.get("errorMessage") or None,
+            )
+            for row in reader
+        ]
+
+
+def _append_activity_log(entries: List[ActivityLogEntry]) -> None:
+    _ensure_csv(ACTIVITY_LOG_CSV, ["id", "recipient", "subject", "status", "timestamp", "errorMessage"])
+    with ACTIVITY_LOG_CSV.open("a", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=["id", "recipient", "subject", "status", "timestamp", "errorMessage"])
+        for entry in entries:
+            writer.writerow(entry.model_dump())
 
 
 def parse_recipients_csv(content: str) -> List[RecipientPreview]:
@@ -240,11 +305,17 @@ def _score_phishing(
         "classification": classification,
         "safe": safe,
         "reasons": reasons,
-
-        # AI Result
-        "aiAnalysis": ai_analysis
+        "aiAnalysis": ai_analysis,
+        "links": links
     }
 
+def extract_links(body: str) -> list[str]:
+    if not body:
+        return []
+
+    pattern = r'https?://[^\s<>"\']+'
+
+    return list(dict.fromkeys(re.findall(pattern, body)))
 
 def _parse_date_token(token: str) -> Optional[datetime]:
     token = token.strip()
@@ -574,11 +645,95 @@ def bulk_send_email(req: BulkSendRequest) -> dict:
         except Exception:
             failures.append(recipient)
 
+    timestamp = datetime.now().isoformat(timespec="seconds")
+    log_entries = [
+        ActivityLogEntry(
+            id=str(uuid.uuid4()),
+            recipient=recipient,
+            subject=req.subject,
+            status="Sent" if recipient not in failures else "Failed",
+            timestamp=timestamp,
+            errorMessage=None if recipient not in failures else "Delivery failed",
+        )
+        for recipient in req.recipients
+    ]
+    _append_activity_log(log_entries)
+
     return {
         "sentCount": sent_count,
         "failedCount": len(failures),
         "failures": failures,
     }
+
+
+@app.get("/api/contacts", response_model=List[Contact])
+def get_contacts() -> List[Contact]:
+    return _read_contacts()
+
+
+@app.post("/api/contacts", response_model=Contact)
+def create_contact(payload: ContactUpsertRequest) -> Contact:
+    if not validate_email(payload.email):
+        raise HTTPException(status_code=400, detail="Invalid email address.")
+    contacts = _read_contacts()
+    contact = Contact(id=str(uuid.uuid4()), name=payload.name.strip(), email=payload.email.strip())
+    contacts.append(contact)
+    _write_contacts(contacts)
+    return contact
+
+
+@app.put("/api/contacts/{contact_id}", response_model=Contact)
+def update_contact(contact_id: str, payload: ContactUpsertRequest) -> Contact:
+    if not validate_email(payload.email):
+        raise HTTPException(status_code=400, detail="Invalid email address.")
+    contacts = _read_contacts()
+    updated = None
+    next_contacts: List[Contact] = []
+    for contact in contacts:
+        if contact.id == contact_id:
+            updated = Contact(id=contact_id, name=payload.name.strip(), email=payload.email.strip())
+            next_contacts.append(updated)
+        else:
+            next_contacts.append(contact)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Contact not found.")
+    _write_contacts(next_contacts)
+    return updated
+
+
+@app.delete("/api/contacts/{contact_id}")
+def remove_contact(contact_id: str) -> dict:
+    contacts = _read_contacts()
+    next_contacts = [contact for contact in contacts if contact.id != contact_id]
+    if len(next_contacts) == len(contacts):
+        raise HTTPException(status_code=404, detail="Contact not found.")
+    _write_contacts(next_contacts)
+    return {"deleted": True}
+
+
+@app.get("/api/activity-log", response_model=List[ActivityLogEntry])
+def get_activity_log() -> List[ActivityLogEntry]:
+    return list(reversed(_read_activity_log()))
+
+
+@app.get("/api/dashboard-stats", response_model=DashboardStats)
+def get_dashboard_stats() -> DashboardStats:
+    contacts = _read_contacts()
+    activity_log = _read_activity_log()
+    emails_sent = sum(1 for item in activity_log if item.status == "Sent")
+    pending = sum(1 for item in activity_log if item.status in {"Pending", "Scheduled", "Sending"})
+    failed = sum(1 for item in activity_log if item.status == "Failed")
+    return DashboardStats(
+        totalRecipients=len(contacts),
+        emailsSent=emails_sent,
+        pending=pending,
+        failed=failed,
+    )
+
+
+@app.post("/api/send-bulk-email")
+def send_bulk_email_legacy(payload: dict) -> dict:
+    return bulk_send_email(BulkSendRequest(**payload))
 
 
 @app.post("/bulk-email/upload", response_model=BulkUploadResponse)

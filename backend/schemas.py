@@ -29,3 +29,37 @@ class BulkSendResponse(BaseModel):
     sentCount: int
     failedCount: int
     failures: List[str]
+
+
+class Contact(BaseModel):
+    id: str
+    name: str
+    email: str
+
+
+class ContactUpsertRequest(BaseModel):
+    name: str
+    email: str
+
+
+class ActivityLogEntry(BaseModel):
+    id: str
+    recipient: str
+    subject: str
+    status: str
+    timestamp: str
+    errorMessage: Optional[str] = None
+
+
+class BulkActivityRequest(BaseModel):
+    recipient: str
+    subject: str
+    status: str
+    errorMessage: Optional[str] = None
+
+
+class DashboardStats(BaseModel):
+    totalRecipients: int
+    emailsSent: int
+    pending: int
+    failed: int
