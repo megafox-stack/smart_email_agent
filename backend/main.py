@@ -11,7 +11,7 @@ from .classifier import classify_emails_payload
 
 from .auth import create_login_url, fetch_and_store_credentials, get_stored_credentials
 from .gmail_service import get_latest_emails, get_email_by_id, send_email, get_profile
-from .ai_service import generate_reply
+from .ai_service import analyze_phishing, generate_reply,summarize_email
 from .schemas import BulkUploadResponse, BulkSendRequest, BulkSendResponse, RecipientPreview
 from pydantic import BaseModel
 from typing import List, Optional
@@ -127,29 +127,47 @@ def _summarize_email(subject: str, sender: str, body: str) -> str:
     sender = _clean_text(sender)
     body = _clean_text(body)
 
+    try:
+        summary = summarize_email(subject, sender, body)
+
+        if summary:
+            return summary.strip()
+
+    except Exception as e:
+        print(f"Ollama Error: {e}")
+
+    # Existing rule-based summary (unchanged)
     if body:
         paragraphs = [p.strip() for p in body.split("\n") if p.strip()]
         if paragraphs:
             summary = paragraphs[0]
             if len(summary) > 240:
-                summary = summary[:237].rstrip() + "..."
+                summary = summary[:237] + "..."
             return summary
 
     if subject and sender:
         return f"Email from {sender} about '{subject}'."
-    if subject:
-        return f"{subject}."
-    if sender:
-        return f"Email from {sender}."
 
     return "No summary available."
 
 
-def _score_phishing(subject: str, sender: str, body: str, links: Optional[List[str]] = None) -> dict:
+def _score_phishing(
+    subject: str,
+    sender: str,
+    body: str,
+    links: Optional[List[str]] = None
+) -> dict:
+
     text = " ".join([subject or "", sender or "", body or ""]).lower()
+
     links = links or []
+
     score = 0
     reasons: List[str] = []
+
+    # -----------------------------
+    # Rule Engine
+    # -----------------------------
 
     if links:
         score += min(30, 10 * len(links))
@@ -160,20 +178,26 @@ def _score_phishing(subject: str, sender: str, body: str, links: Optional[List[s
             score += 8
             reasons.append(f"Contains suspicious term: '{keyword}'")
 
-    if "@gmail.com" not in sender.lower() and "@edu" not in sender.lower() and "@company" not in sender.lower() and sender:
+    if (
+        "@gmail.com" not in sender.lower()
+        and "@edu" not in sender.lower()
+        and "@company" not in sender.lower()
+        and sender
+    ):
         if "@" in sender:
             score += 10
             reasons.append("Sender address looks unusual")
 
     if "unsubscribe" in body.lower() or "click here" in body.lower():
         score += 10
-        reasons.append("Message resembles a promotional or phishing pattern")
+        reasons.append("Promotional or phishing-like wording")
 
     if "urgent" in subject.lower() or "action required" in subject.lower():
         score += 10
-        reasons.append("Subject contains urgency language")
+        reasons.append("Urgency detected")
 
-    score = max(0, min(100, score))
+    score = max(0, min(score, 100))
+
     if score <= 25:
         classification = "Safe"
     elif score <= 50:
@@ -184,14 +208,41 @@ def _score_phishing(subject: str, sender: str, body: str, links: Optional[List[s
         classification = "High Risk"
 
     safe = score <= 25
+
     if not reasons:
         reasons.append("No obvious phishing signals detected.")
+
+    # -----------------------------
+    # AI Analysis
+    # -----------------------------
+
+    ai_analysis = ""
+
+    try:
+        ai_analysis = ai_analysis = analyze_phishing(
+    subject=subject,
+    sender=sender,
+    body=body,
+    score=score,
+    classification=classification,
+    reasons=reasons,
+)
+
+    except Exception as e:
+        print(f"[Ollama Phishing Error] {e}")
+
+    # -----------------------------
+    # Return BOTH
+    # -----------------------------
 
     return {
         "riskScore": score,
         "classification": classification,
         "safe": safe,
         "reasons": reasons,
+
+        # AI Result
+        "aiAnalysis": ai_analysis
     }
 
 
@@ -383,8 +434,17 @@ def summarize_email(payload: dict) -> dict:
         subject = payload.get("subject", "")
         sender = payload.get("sender", "")
         body = payload.get("body", "")
-        summary = _summarize_email(subject=subject, sender=sender, body=body)
-        return {"summary": summary}
+
+        summary = _summarize_email(
+            subject=subject,
+            sender=sender,
+            body=body,
+        )
+
+        return {
+            "summary": summary
+        }
+
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -396,13 +456,22 @@ def phishing_check(payload: dict) -> dict:
         sender = payload.get("sender", "")
         body = payload.get("body", "")
         links = payload.get("links", [])
+
         if links is None:
             links = []
-        if not isinstance(links, list):
-            raise ValueError("Invalid payload: 'links' must be a list")
 
-        result = _score_phishing(subject=subject, sender=sender, body=body, links=links)
+        if not isinstance(links, list):
+            raise ValueError("'links' must be a list")
+
+        result = _score_phishing(
+            subject=subject,
+            sender=sender,
+            body=body,
+            links=links,
+        )
+
         return result
+
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

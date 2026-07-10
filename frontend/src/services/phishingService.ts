@@ -4,7 +4,8 @@ export interface PhishingResult {
   riskScore: number
   classification: string
   safe: boolean
-  reasons: string[]
+  reasons: string[] 
+  aiAnalysis: string
 }
 
 const cache = new Map<string, PhishingResult>()
@@ -43,12 +44,15 @@ export async function analyzeEmailPhishing(
       throw new Error('Invalid response from phishing check.')
     }
 
-    const result: PhishingResult = {
-      riskScore: data.riskScore,
-      classification: data.classification || 'Unknown',
-      safe: Boolean(data.safe),
-      reasons: Array.isArray(data.reasons) ? data.reasons : [],
-    }
+   const result: PhishingResult = {
+    riskScore: data.riskScore,
+    classification: data.classification || 'Unknown',
+    safe: Boolean(data.safe),
+    reasons: Array.isArray(data.reasons) ? data.reasons : [],
+    aiAnalysis: data.aiAnalysis || '',
+ 
+    
+}
 
     cache.set(emailId, result)
     return result
