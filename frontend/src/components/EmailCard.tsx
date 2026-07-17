@@ -10,7 +10,7 @@ export default function EmailCard({ email, onSelect }: EmailCardProps) {
     <button
       type="button"
       onClick={() => onSelect(email)}
-      className="group flex w-full flex-col gap-2 rounded-3xl border border-white/10 bg-slate-950/80 px-5 py-4 text-left transition hover:border-sky-500/30 hover:bg-slate-900/80"
+      className="group flex w-full flex-col gap-2 rounded-3xl border border-white/10 bg-slate-950/80 px-5 py-3 text-left transition hover:border-sky-500/30 hover:bg-slate-900/80"
     >
       <div className="flex items-center justify-between gap-4">
         <h3 className="truncate text-base font-semibold text-white transition group-hover:text-sky-300">{email.subject}</h3>

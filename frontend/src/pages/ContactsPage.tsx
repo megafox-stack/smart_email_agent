@@ -30,6 +30,27 @@ export default function ContactsPage() {
     }
   }, [])
 
+  useEffect(() => {
+    function onContactsUpdated() {
+      let mounted = true
+      ;(async () => {
+        try {
+          const data = await fetchContacts()
+          if (mounted) setContacts(data)
+        } finally {
+          if (mounted) setLoading(false)
+        }
+      })()
+
+      return () => {
+        mounted = false
+      }
+    }
+
+    window.addEventListener('contacts:updated', onContactsUpdated as EventListener)
+    return () => window.removeEventListener('contacts:updated', onContactsUpdated as EventListener)
+  }, [])
+
   const filteredContacts = useMemo(() => {
     const value = query.trim().toLowerCase()
     if (!value) return contacts

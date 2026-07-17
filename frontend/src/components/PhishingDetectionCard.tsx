@@ -190,6 +190,37 @@ export default function PhishingDetectionCard({ emailDetail }: PhishingDetection
 
           )}
 
+          {/* Links Found */}
+          {result.links && result.links.length > 0 && (
+
+            <div className="rounded-3xl border border-white/10 bg-slate-950/90 p-4">
+
+              <p className="text-sm text-slate-400">
+                🔗 Links Found ({result.links.length})
+              </p>
+
+              <div className="mt-3 space-y-2">
+
+                {result.links.map((link, index) => (
+
+                  <a
+                    key={index}
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block break-all rounded-xl bg-slate-900 px-3 py-2 text-sm text-blue-400 transition hover:bg-slate-800 hover:underline"
+                  >
+                    {link}
+                  </a>
+
+                ))}
+
+              </div>
+
+            </div>
+
+          )}
+
         </div>
 
       ) : (

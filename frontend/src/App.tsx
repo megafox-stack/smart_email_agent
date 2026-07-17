@@ -2,10 +2,23 @@ import { useState } from 'react'
 import Dashboard from './pages/Dashboard'
 import BulkEmailPage from './pages/BulkEmail'
 import EventCalendar from './pages/EventCalendar'
-import ContactsPage from './pages/ContactsPage'
+import ContactsPage from './pages/ContactsPage/index'
+import ToastHost from './components/ToastHost'
+import Onboarding from './pages/onboarding'
 
 function App() {
-  const [activePage, setActivePage] = useState<'Dashboard' | 'Bulk Email' | 'Event Calendar' | 'Contacts'>('Dashboard')
+  const [activePage, setActivePage] = useState('Dashboard');
+
+  const [showOnboarding, setShowOnboarding] = useState(true);
+
+  function finishOnboarding() {
+    localStorage.setItem('onboardingComplete', 'true')
+    setShowOnboarding(false)
+  }
+
+  if (showOnboarding) {
+    return <Onboarding onFinish={finishOnboarding} />
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -58,6 +71,7 @@ function App() {
           <ContactsPage />
         )}
       </div>
+      <ToastHost />
     </div>
   )
 }

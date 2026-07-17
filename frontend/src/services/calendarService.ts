@@ -3,6 +3,15 @@ import { extractDeadlines } from './deadlineService'
 import type { Email, EmailDetail } from '../types/email'
 
 export type EventCategory =
+  | 'Meeting'
+  | 'Deadline'
+  | 'Interview'
+  | 'Reminder'
+  | 'Holiday'
+  | 'Birthday'
+  | 'Conference'
+  | 'Personal'
+  | 'Other'
   | 'Assignment'
   | 'Exam'
   | 'Meeting'
@@ -41,6 +50,15 @@ export interface CalendarEventFormData {
 }
 
 export const EVENT_CATEGORIES: EventCategory[] = [
+  'Meeting',
+  'Deadline',
+  'Interview',
+  'Reminder',
+  'Holiday',
+  'Birthday',
+  'Conference',
+  'Personal',
+  'Other',
   'Assignment',
   'Exam',
   'Meeting',
@@ -57,39 +75,45 @@ export const EVENT_PRIORITIES: EventPriority[] = ['High', 'Medium', 'Low']
 
 export const EVENT_FILTERS = [
   { label: 'All Events', category: null },
-  { label: 'Assignments', category: 'Assignment' },
-  { label: 'Exams', category: 'Exam' },
   { label: 'Meetings', category: 'Meeting' },
-  { label: 'Workshops', category: 'Workshop' },
-  { label: 'Finance', category: 'Finance' },
-  { label: 'Placements', category: 'Placement' },
+  { label: 'Deadlines', category: 'Deadline' },
+  { label: 'Interviews', category: 'Interview' },
+  { label: 'Reminders', category: 'Reminder' },
+  { label: 'Holidays', category: 'Holiday' },
+  { label: 'Birthdays', category: 'Birthday' },
+  { label: 'Conferences', category: 'Conference' },
   { label: 'Personal', category: 'Personal' },
 ] as const
 
 const categoryRules: Array<{ category: EventCategory; keywords: string[] }> = [
-  { category: 'Assignment', keywords: ['assignment', 'deadline', 'due', 'submit before', 'submission'] },
-  { category: 'Exam', keywords: ['exam', 'test', 'quiz', 'assessment'] },
-  { category: 'Workshop', keywords: ['workshop', 'bootcamp', 'training'] },
+  { category: 'Deadline', keywords: ['deadline', 'due', 'submit before', 'submission', 'expires'] },
+  { category: 'Interview', keywords: ['interview', 'hr round', 'technical round', 'panel'] },
   { category: 'Meeting', keywords: ['meeting', 'call', 'discussion', 'project review', 'review'] },
-  { category: 'Seminar', keywords: ['seminar', 'webinar', 'viva', 'presentation'] },
-  { category: 'Finance', keywords: ['fee', 'payment', 'invoice', 'pay before', 'dues'] },
-  { category: 'Placement', keywords: ['placement', 'internship', 'interview', 'drive', 'application deadline'] },
-  { category: 'Reminder', keywords: ['reminder', 'remember', 'scheduled'] },
+  { category: 'Conference', keywords: ['conference', 'summit', 'symposium', 'webinar'] },
+  { category: 'Reminder', keywords: ['reminder', 'remember', 'scheduled', 'alert'] },
+  { category: 'Holiday', keywords: ['holiday', 'festival', 'vacation', 'break'] },
+  { category: 'Birthday', keywords: ['birthday', 'bday', 'anniversary'] },
+  { category: 'Personal', keywords: ['personal', 'family', 'party', 'appointment'] },
 ]
 
 const eventKeywords = categoryRules.flatMap((rule) => rule.keywords)
 
 export const categoryBadgeClasses: Record<EventCategory, string> = {
-  Assignment: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/20',
-  Exam: 'bg-rose-500/15 text-rose-300 border-rose-500/20',
   Meeting: 'bg-sky-500/15 text-sky-300 border-sky-500/20',
-  Workshop: 'bg-violet-500/15 text-violet-300 border-violet-500/20',
-  Seminar: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/20',
-  Finance: 'bg-amber-500/15 text-amber-300 border-amber-500/20',
-  Placement: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/20',
+  Deadline: 'bg-red-500/15 text-red-300 border-red-500/20',
+  Interview: 'bg-violet-500/15 text-violet-300 border-violet-500/20',
+  Reminder: 'bg-orange-500/15 text-orange-300 border-orange-500/20',
+  Holiday: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/20',
+  Birthday: 'bg-pink-500/15 text-pink-300 border-pink-500/20',
+  Conference: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/20',
   Personal: 'bg-teal-500/15 text-teal-300 border-teal-500/20',
-  Reminder: 'bg-blue-500/15 text-blue-300 border-blue-500/20',
   Other: 'bg-slate-500/15 text-slate-300 border-slate-500/20',
+  Assignment: 'bg-red-500/15 text-red-300 border-red-500/20',
+  Exam: 'bg-red-500/15 text-red-300 border-red-500/20',
+  Workshop: 'bg-sky-500/15 text-sky-300 border-sky-500/20',
+  Seminar: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/20',
+  Finance: 'bg-amber-500/15 text-amber-300 border-amber-500/20',
+  Placement: 'bg-violet-500/15 text-violet-300 border-violet-500/20',
 }
 
 export const priorityBadgeClasses: Record<EventPriority, string> = {
@@ -126,7 +150,7 @@ export function createManualCalendarEvent(formData: CalendarEventFormData): Cale
     title: formData.title.trim(),
     date: formData.date,
     time: formData.time.trim(),
-    category: formData.category,
+    category: normalizeCategory(formData.category),
     priority: formData.priority,
     sender: 'Manual entry',
     sourceEmailSubject: 'Manual event',
@@ -152,6 +176,47 @@ export async function loadExtractedCalendarEvents(): Promise<CalendarEvent[]> {
 
   const eventGroups = await Promise.all(detailResults.map(extractEventsFromEmail))
   return eventGroups.flat()
+}
+
+export async function loadCalendarEvents(): Promise<CalendarEvent[]> {
+  const response = await api.get<CalendarEvent[]>('/api/calendar-events')
+  return Array.isArray(response.data) ? response.data.map(normalizeEvent) : []
+}
+
+export async function saveCalendarEvent(
+  formData: CalendarEventFormData,
+  eventId?: string,
+  meta?: Partial<{
+    sender: string
+    sourceEmailId: string
+    sourceEmailSubject: string
+    sourceEmailDate: string
+    isManual: boolean
+  }>,
+): Promise<CalendarEvent> {
+  const payload = {
+    title: formData.title.trim(),
+    date: formData.date,
+    time: formData.time.trim(),
+    category: normalizeCategory(formData.category),
+    priority: formData.priority,
+    sender: meta?.sender ?? 'Manual entry',
+    sourceEmailId: meta?.sourceEmailId ?? null,
+    sourceEmailSubject: meta?.sourceEmailSubject ?? 'Manual event',
+    sourceEmailDate: meta?.sourceEmailDate ?? null,
+    description: formData.description.trim(),
+    isManual: meta?.isManual ?? true,
+  }
+
+  const response = eventId
+    ? await api.put<CalendarEvent>(`/api/calendar-events/${eventId}`, payload)
+    : await api.post<CalendarEvent>('/api/calendar-events', payload)
+
+  return normalizeEvent(response.data)
+}
+
+export async function deleteCalendarEvent(eventId: string): Promise<void> {
+  await api.delete(`/api/calendar-events/${eventId}`)
 }
 
 async function extractEventsFromEmail(email: EmailDetail): Promise<CalendarEvent[]> {
@@ -191,7 +256,35 @@ async function extractEventsFromEmail(email: EmailDetail): Promise<CalendarEvent
 
 function inferCategory(text: string): EventCategory {
   const rule = categoryRules.find((item) => item.keywords.some((keyword) => text.includes(keyword)))
-  return rule?.category || 'Other'
+  return rule?.category || normalizeCategoryFromTitle(text)
+}
+
+function normalizeCategory(category: string): EventCategory {
+  const normalized = category.toLowerCase()
+  if (normalized.includes('meeting')) return 'Meeting'
+  if (normalized.includes('deadline') || normalized.includes('due')) return 'Deadline'
+  if (normalized.includes('interview')) return 'Interview'
+  if (normalized.includes('reminder')) return 'Reminder'
+  if (normalized.includes('holiday')) return 'Holiday'
+  if (normalized.includes('birthday')) return 'Birthday'
+  if (normalized.includes('conference')) return 'Conference'
+  if (normalized.includes('personal')) return 'Personal'
+  return 'Other'
+}
+
+function normalizeCategoryFromTitle(text: string): EventCategory {
+  return normalizeCategory(text)
+}
+
+function normalizeEvent(event: CalendarEvent): CalendarEvent {
+  return {
+    ...event,
+    category: normalizeCategory(event.category),
+    time: event.time || '',
+    sender: event.sender || 'Manual entry',
+    sourceEmailSubject: event.sourceEmailSubject || 'Manual event',
+    description: event.description || '',
+  }
 }
 
 function inferPriority(text: string, fallbackPriority: string, remainingDays: number): EventPriority {

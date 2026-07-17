@@ -15,6 +15,8 @@ from .classifier import classify_emails_payload
 from .auth import create_login_url, fetch_and_store_credentials, get_stored_credentials
 from .gmail_service import get_latest_emails, get_email_by_id, send_email, get_profile
 from .ai_service import analyze_phishing, generate_reply,summarize_email
+from .ai_service import generate_contact_insights, OLLAMA_URL
+import httpx
 from .schemas import (
     ActivityLogEntry,
     BulkActivityRequest,
@@ -22,6 +24,8 @@ from .schemas import (
     BulkSendRequest,
     BulkSendResponse,
     DashboardStats,
+    CalendarEventItem,
+    CalendarEventUpsertRequest,
     Contact,
     ContactUpsertRequest,
     RecipientPreview,
@@ -34,6 +38,7 @@ app = FastAPI(title="Gmail AI Assistant", version="0.1")
 BASE_DIR = Path(__file__).resolve().parent
 CONTACTS_CSV = BASE_DIR / "contacts.csv"
 ACTIVITY_LOG_CSV = BASE_DIR / "activity_log.csv"
+CALENDAR_EVENTS_CSV = BASE_DIR / "calendar_events.csv"
 
 # Allow local frontend to access the API during development
 app.add_middleware(
@@ -59,19 +64,31 @@ def _ensure_csv(path: Path, headers: List[str]) -> None:
 
 
 def _read_contacts() -> List[Contact]:
-    _ensure_csv(CONTACTS_CSV, ["id", "name", "email"])
+    _ensure_csv(CONTACTS_CSV, ["id", "name", "email", "ai_insights"])
     with CONTACTS_CSV.open("r", newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file)
-        return [Contact(id=row.get("id", ""), name=row.get("name", ""), email=row.get("email", "")) for row in reader]
+        return [
+            Contact(
+                id=row.get("id", ""),
+                name=row.get("name", ""),
+                email=row.get("email", ""),
+                ai_insights=row.get("ai_insights") or None,
+            )
+            for row in reader
+        ]
 
 
 def _write_contacts(contacts: List[Contact]) -> None:
-    _ensure_csv(CONTACTS_CSV, ["id", "name", "email"])
+    _ensure_csv(CONTACTS_CSV, ["id", "name", "email", "ai_insights"])
     with CONTACTS_CSV.open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=["id", "name", "email"])
+        writer = csv.DictWriter(file, fieldnames=["id", "name", "email", "ai_insights"])
         writer.writeheader()
         for contact in contacts:
-            writer.writerow(contact.model_dump())
+            # ensure ai_insights is present in the written dict
+            data = contact.model_dump()
+            if "ai_insights" not in data:
+                data["ai_insights"] = None
+            writer.writerow(data)
 
 
 def _read_activity_log() -> List[ActivityLogEntry]:
@@ -97,6 +114,47 @@ def _append_activity_log(entries: List[ActivityLogEntry]) -> None:
         writer = csv.DictWriter(file, fieldnames=["id", "recipient", "subject", "status", "timestamp", "errorMessage"])
         for entry in entries:
             writer.writerow(entry.model_dump())
+
+
+def _read_calendar_events() -> List[CalendarEventItem]:
+    _ensure_csv(
+        CALENDAR_EVENTS_CSV,
+        ["id", "title", "date", "time", "category", "priority", "sender", "sourceEmailId", "sourceEmailSubject", "sourceEmailDate", "description", "isManual"],
+    )
+    with CALENDAR_EVENTS_CSV.open("r", newline="", encoding="utf-8") as file:
+        reader = csv.DictReader(file)
+        return [
+            CalendarEventItem(
+                id=row.get("id", ""),
+                title=row.get("title", ""),
+                date=row.get("date", ""),
+                time=row.get("time", ""),
+                category=row.get("category", "Other"),
+                priority=row.get("priority", "Medium"),
+                sender=row.get("sender", ""),
+                sourceEmailId=row.get("sourceEmailId") or None,
+                sourceEmailSubject=row.get("sourceEmailSubject", ""),
+                sourceEmailDate=row.get("sourceEmailDate") or None,
+                description=row.get("description", ""),
+                isManual=str(row.get("isManual", "True")).lower() == "true",
+            )
+            for row in reader
+        ]
+
+
+def _write_calendar_events(events: List[CalendarEventItem]) -> None:
+    _ensure_csv(
+        CALENDAR_EVENTS_CSV,
+        ["id", "title", "date", "time", "category", "priority", "sender", "sourceEmailId", "sourceEmailSubject", "sourceEmailDate", "description", "isManual"],
+    )
+    with CALENDAR_EVENTS_CSV.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(
+            file,
+            fieldnames=["id", "title", "date", "time", "category", "priority", "sender", "sourceEmailId", "sourceEmailSubject", "sourceEmailDate", "description", "isManual"],
+        )
+        writer.writeheader()
+        for event in events:
+            writer.writerow(event.model_dump())
 
 
 def parse_recipients_csv(content: str) -> List[RecipientPreview]:
@@ -598,6 +656,7 @@ class SendRequest(BaseModel):
     subject: str
     body: str
     threadId: Optional[str] = None
+    attachments: Optional[List[dict]] = None
 
 
 @app.post("/send-email")
@@ -616,6 +675,7 @@ def send_email_endpoint(req: SendRequest) -> dict:
             subject=req.subject,
             body=req.body,
             thread_id=req.threadId,
+            attachments=req.attachments,
         )
         return {"sent": sent}
     except Exception as exc:
@@ -676,7 +736,7 @@ def create_contact(payload: ContactUpsertRequest) -> Contact:
     if not validate_email(payload.email):
         raise HTTPException(status_code=400, detail="Invalid email address.")
     contacts = _read_contacts()
-    contact = Contact(id=str(uuid.uuid4()), name=payload.name.strip(), email=payload.email.strip())
+    contact = Contact(id=str(uuid.uuid4()), name=payload.name.strip(), email=payload.email.strip(), ai_insights=payload.ai_insights)
     contacts.append(contact)
     _write_contacts(contacts)
     return contact
@@ -691,7 +751,7 @@ def update_contact(contact_id: str, payload: ContactUpsertRequest) -> Contact:
     next_contacts: List[Contact] = []
     for contact in contacts:
         if contact.id == contact_id:
-            updated = Contact(id=contact_id, name=payload.name.strip(), email=payload.email.strip())
+            updated = Contact(id=contact_id, name=payload.name.strip(), email=payload.email.strip(), ai_insights=payload.ai_insights or contact.ai_insights)
             next_contacts.append(updated)
         else:
             next_contacts.append(contact)
@@ -699,6 +759,72 @@ def update_contact(contact_id: str, payload: ContactUpsertRequest) -> Contact:
         raise HTTPException(status_code=404, detail="Contact not found.")
     _write_contacts(next_contacts)
     return updated
+
+
+@app.get("/api/contacts/{contact_id}/insights")
+def get_contact_insights(contact_id: str) -> dict:
+    contacts = _read_contacts()
+    for contact in contacts:
+        if contact.id == contact_id:
+            return {"ai_insights": contact.ai_insights}
+    raise HTTPException(status_code=404, detail="Contact not found.")
+
+
+class InsightPayload(BaseModel):
+    ai_insights: str
+
+
+@app.put("/api/contacts/{contact_id}/insights")
+def update_contact_insights(contact_id: str, payload: InsightPayload) -> dict:
+    contacts = _read_contacts()
+    found = False
+    for contact in contacts:
+        if contact.id == contact_id:
+            contact.ai_insights = payload.ai_insights
+            found = True
+            break
+    if not found:
+        raise HTTPException(status_code=404, detail="Contact not found.")
+    _write_contacts(contacts)
+    return {"ai_insights": payload.ai_insights}
+
+
+@app.post("/api/contacts/{contact_id}/generate-insights")
+def generate_and_save_contact_insights(contact_id: str) -> dict:
+    contacts = _read_contacts()
+    contact = next((c for c in contacts if c.id == contact_id), None)
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found.")
+
+    # try to fetch recent emails from this contact for context
+    context_text = ""
+    try:
+        credentials = get_stored_credentials()
+        messages = get_latest_emails(credentials=credentials, max_results=10)
+        related = [m for m in messages if contact.email and contact.email.lower() in (m.get("sender", "") or "").lower()]
+        context_text = "\n\n".join((m.get("subject", "") or "") + "\n" + (m.get("body", "") or "") for m in related[:3])
+    except Exception:
+        # ignore auth/fetch errors and proceed with name/email only
+        context_text = ""
+
+    # ensure Ollama is available before calling the model
+    try:
+        with httpx.Client(base_url=OLLAMA_URL, timeout=5.0) as client:
+            client.get('/api/models')
+    except Exception:
+        raise HTTPException(status_code=503, detail='AI service (Ollama) is not available.')
+
+    try:
+        insights = generate_contact_insights(contact.name or '', contact.email or '', context_text)
+        # update contact
+        for c in contacts:
+            if c.id == contact_id:
+                c.ai_insights = insights
+                break
+        _write_contacts(contacts)
+        return {"ai_insights": insights}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.delete("/api/contacts/{contact_id}")
@@ -716,6 +842,15 @@ def get_activity_log() -> List[ActivityLogEntry]:
     return list(reversed(_read_activity_log()))
 
 
+@app.delete("/api/activity-log")
+def clear_activity_log() -> dict:
+    _ensure_csv(ACTIVITY_LOG_CSV, ["id", "recipient", "subject", "status", "timestamp", "errorMessage"])
+    with ACTIVITY_LOG_CSV.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=["id", "recipient", "subject", "status", "timestamp", "errorMessage"])
+        writer.writeheader()
+    return {"cleared": True}
+
+
 @app.get("/api/dashboard-stats", response_model=DashboardStats)
 def get_dashboard_stats() -> DashboardStats:
     contacts = _read_contacts()
@@ -729,6 +864,41 @@ def get_dashboard_stats() -> DashboardStats:
         pending=pending,
         failed=failed,
     )
+
+
+@app.get("/api/calendar-events", response_model=List[CalendarEventItem])
+def get_calendar_events() -> List[CalendarEventItem]:
+    return _read_calendar_events()
+
+
+@app.post("/api/calendar-events", response_model=CalendarEventItem)
+def create_calendar_event(payload: CalendarEventUpsertRequest) -> CalendarEventItem:
+    events = _read_calendar_events()
+    event = CalendarEventItem(id=str(uuid.uuid4()), **payload.model_dump())
+    events.append(event)
+    _write_calendar_events(events)
+    return event
+
+
+@app.put("/api/calendar-events/{event_id}", response_model=CalendarEventItem)
+def update_calendar_event(event_id: str, payload: CalendarEventUpsertRequest) -> CalendarEventItem:
+    events = _read_calendar_events()
+    updated = CalendarEventItem(id=event_id, **payload.model_dump())
+    next_events = [updated if event.id == event_id else event for event in events]
+    if all(event.id != event_id for event in events):
+        raise HTTPException(status_code=404, detail="Calendar event not found.")
+    _write_calendar_events(next_events)
+    return updated
+
+
+@app.delete("/api/calendar-events/{event_id}")
+def delete_calendar_event(event_id: str) -> dict:
+    events = _read_calendar_events()
+    next_events = [event for event in events if event.id != event_id]
+    if len(next_events) == len(events):
+        raise HTTPException(status_code=404, detail="Calendar event not found.")
+    _write_calendar_events(next_events)
+    return {"deleted": True}
 
 
 @app.post("/api/send-bulk-email")

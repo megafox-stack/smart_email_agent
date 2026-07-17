@@ -35,11 +35,13 @@ class Contact(BaseModel):
     id: str
     name: str
     email: str
+    ai_insights: Optional[str] = None
 
 
 class ContactUpsertRequest(BaseModel):
     name: str
     email: str
+    ai_insights: Optional[str] = None
 
 
 class ActivityLogEntry(BaseModel):
@@ -63,3 +65,32 @@ class DashboardStats(BaseModel):
     emailsSent: int
     pending: int
     failed: int
+
+
+class CalendarEventItem(BaseModel):
+    id: str
+    title: str
+    date: str
+    time: str
+    category: str
+    priority: str
+    sender: str
+    sourceEmailId: Optional[str] = None
+    sourceEmailSubject: str
+    sourceEmailDate: Optional[str] = None
+    description: str
+    isManual: bool
+
+
+class CalendarEventUpsertRequest(BaseModel):
+    title: str
+    date: str
+    time: str
+    category: str
+    priority: str
+    sender: str = ''
+    sourceEmailId: Optional[str] = None
+    sourceEmailSubject: str = ''
+    sourceEmailDate: Optional[str] = None
+    description: str = ''
+    isManual: bool = True

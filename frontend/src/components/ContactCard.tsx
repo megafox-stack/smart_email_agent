@@ -1,4 +1,6 @@
 import type { Contact } from '../types/contact'
+import { useState } from 'react'
+import ContactAiModal from './ContactAiModal'
 
 interface ContactCardProps {
   contact: Contact
@@ -8,6 +10,7 @@ interface ContactCardProps {
 }
 
 export default function ContactCard({ contact, onSend, onEdit, onDelete }: ContactCardProps) {
+  const [aiOpen, setAiOpen] = useState(false)
   const initial = contact.name.trim().charAt(0).toUpperCase() || '?'
 
   return (
@@ -47,9 +50,12 @@ export default function ContactCard({ contact, onSend, onEdit, onDelete }: Conta
         </button>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-slate-400">
-        AI Insights (Coming Soon)
+      <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-slate-400 flex items-center justify-between">
+        <span className="truncate">{contact.ai_insights ? (contact.ai_insights.length > 120 ? `${contact.ai_insights.slice(0, 120)}…` : contact.ai_insights) : ''}</span>
+        <button onClick={() => setAiOpen(true)} className="ml-3 rounded-full bg-slate-900 px-3 py-1 text-xs text-slate-100 hover:bg-slate-800">Insights</button>
       </div>
+
+      <ContactAiModal open={aiOpen} contact={contact} onClose={() => setAiOpen(false)} />
     </div>
   )
 }

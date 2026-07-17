@@ -6,11 +6,12 @@ interface CalendarGridProps {
   events: CalendarEvent[]
   selectedDate: string
   onSelectDate: (dateKey: string) => void
+  onSelectEvent?: (event: CalendarEvent) => void
 }
 
 const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-export default function CalendarGrid({ monthDate, events, selectedDate, onSelectDate }: CalendarGridProps) {
+export default function CalendarGrid({ monthDate, events, selectedDate, onSelectDate, onSelectEvent }: CalendarGridProps) {
   const todayKey = formatDateKey(new Date())
   const days = getCalendarDays(monthDate)
   const eventsByDate = events.reduce<Record<string, CalendarEvent[]>>((groups, event) => {
@@ -55,13 +56,17 @@ export default function CalendarGrid({ monthDate, events, selectedDate, onSelect
 
               {dayEvents.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1">
-                  {dayEvents.slice(0, 3).map((event) => (
-                    <span
-                      key={event.id}
-                      className={`h-2 w-2 rounded-full border ${categoryBadgeClasses[event.category]}`}
-                      title={event.title}
-                    />
-                  ))}
+                          {dayEvents.slice(0, 3).map((event) => (
+                            <button
+                              key={event.id}
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); onSelectEvent?.(event) }}
+                              className={`h-6 rounded-full px-2 py-1 text-xs font-semibold text-white ${categoryBadgeClasses[event.category]} transition hover:scale-105`}
+                              title={`${event.title} ${event.time ? `@ ${event.time}` : ''}`}
+                            >
+                              <span className="truncate max-w-[90px] block">{event.title}</span>
+                            </button>
+                          ))}
                   {dayEvents.length > 3 && <span className="text-[11px] text-slate-500">+{dayEvents.length - 3}</span>}
                 </div>
               )}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { EmailDetail } from '../types/email'
 import { extractDeadlines, type DeadlineItem, type DeadlineResult } from '../services/deadlineService'
+import { saveCalendarEvent } from '../services/calendarService'
 
 interface DeadlineCardProps {
   emailDetail: EmailDetail | null
@@ -106,6 +107,41 @@ export default function DeadlineCard({ emailDetail }: DeadlineCardProps) {
                 <p className={`mt-1 text-sm font-semibold ${deadline.remainingDays < 0 ? 'text-red-300' : 'text-slate-100'}`}>
                   {remainingLabel(deadline.remainingDays)}
                 </p>
+              </div>
+              <div className="mt-4 flex items-center gap-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      const formData = {
+                        title: deadline.title,
+                        date: deadline.date,
+                        time: deadline.time || '',
+                        category: 'Deadline',
+                        description: `Extracted from email: ${emailDetail?.subject ?? ''}`,
+                        priority: deadline.priority === 'High' ? 'High' : deadline.priority === 'Low' ? 'Low' : 'Medium',
+                      }
+
+                      await saveCalendarEvent(formData as any, undefined, {
+                        sender: emailDetail?.sender ?? 'Unknown',
+                        sourceEmailId: emailDetail?.id ?? undefined,
+                        sourceEmailSubject: emailDetail?.subject ?? undefined,
+                        sourceEmailDate: emailDetail?.date ?? undefined,
+                        isManual: false,
+                      })
+
+                      // notify calendar to refresh
+                      window.dispatchEvent(new CustomEvent('calendar:updated'))
+                      // show success toast
+                      window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: 'Event added to calendar', type: 'success' } }))
+                    } catch (err) {
+                      // eslint-disable-next-line no-console
+                      console.error('Failed to save calendar event', err)
+                    }
+                  }}
+                  className="rounded-2xl bg-sky-500 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-400"
+                >
+                  Add to Calendar
+                </button>
               </div>
             </div>
           ))}

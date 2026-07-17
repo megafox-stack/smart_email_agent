@@ -25,6 +25,14 @@ export default function Dashboard() {
     setActiveFolder,
   } = useEmails()
 
+  const isUnauthorized = error?.status === 401
+
+  useEffect(() => {
+    if (isUnauthorized) {
+      setSelectedEmail(null)
+    }
+  }, [isUnauthorized, setSelectedEmail])
+
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search)
@@ -40,6 +48,12 @@ export default function Dashboard() {
     }
   }, [refresh])
 
+  const visibleEmails = isUnauthorized ? [] : filteredEmails
+
+  const visibleStats = isUnauthorized
+    ? { total: 0, important: 0, university: 0, spam: 0 }
+    : stats
+
   const content = useMemo(() => {
     if (loading) {
       return (
@@ -51,7 +65,7 @@ export default function Dashboard() {
 
     if (error) {
       // Show helpful action when unauthenticated
-      if (error.status === 401) {
+      if (isUnauthorized) {
         return (
           <div className="flex min-h-[160px] flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-slate-700/80 bg-slate-950/70 p-10 text-center text-slate-400">
             <p className="text-lg font-semibold text-slate-100">You're not signed in</p>
@@ -71,7 +85,7 @@ export default function Dashboard() {
       )
     }
 
-    if (filteredEmails.length === 0) {
+    if (visibleEmails.length === 0) {
       return (
         <div className="flex min-h-[160px] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-700/80 bg-slate-950/70 p-10 text-center text-slate-400">
           <p className="text-lg font-semibold text-slate-100">No matching emails found</p>
@@ -82,20 +96,20 @@ export default function Dashboard() {
 
     return (
       <div className="grid gap-4 xl:grid-cols-1">
-        {filteredEmails.map((email) => (
+        {visibleEmails.map((email) => (
           <EmailCard key={email.id} email={email} onSelect={setSelectedEmail} />
         ))}
       </div>
     )
-  }, [filteredEmails, loading, error, setSelectedEmail])
+  }, [visibleEmails, loading, error, isUnauthorized, setSelectedEmail])
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-[1480px] gap-6 xl:grid-cols-[280px_minmax(0,_1fr)_420px] xl:items-start">
+    <div className="h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.14),_transparent_34%),linear-gradient(180deg,_#020617_0%,_#020617_45%,_#030712_100%)] px-3 py-3 text-slate-100 sm:px-4 lg:px-5">
+      <div className="mx-auto grid h-full max-w-[1720px] gap-4 xl:grid-cols-[240px_1fr_500px]">
         <Sidebar active={activeFolder} onSelect={setActiveFolder} />
 
         {activeFolder === 'Settings' ? (
-          <main className="space-y-6 xl:col-span-2">
+          <main className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
             <SettingsPanel
               error={error}
               emailCount={emails.length}
@@ -104,45 +118,47 @@ export default function Dashboard() {
             />
           </main>
         ) : activeFolder === 'Drafts' ? (
-          <main className="space-y-6 xl:col-span-2">
+          <main className="min-h-0 overflow-hidden xl:col-span-2">
             <DraftMessagesPanel />
           </main>
         ) : (
           <>
-            <main className="space-y-6">
+            <main className="flex min-h-0 flex-col gap-4 overflow-hidden">
               <Navbar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
 
-              <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <StatsCard label="Total Emails" value={stats.total} accent="" />
-                <StatsCard label="Important Emails" value={stats.important} accent="" />
-                <StatsCard label="University Emails" value={stats.university} accent="" />
-                <StatsCard label="Spam Emails" value={stats.spam} accent="" />
+              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <StatsCard label="Total Emails" value={visibleStats.total} accent="" />
+                <StatsCard label="Important Emails" value={visibleStats.important} accent="" />
+                <StatsCard label="University Emails" value={visibleStats.university} accent="" />
+                <StatsCard label="Spam Emails" value={visibleStats.spam} accent="" />
               </section>
 
-              <section className="rounded-[2rem] border border-white/10 bg-slate-950/80 p-6 shadow-soft">
-                <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] p-4 shadow-[0_24px_80px_rgba(2,6,23,0.55)] backdrop-blur-xl">
+                <div className="mb-4 flex flex-col gap-3 border-b border-white/5 pb-4 md:flex-row md:items-end md:justify-between">
                   <div>
-                    <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Inbox</p>
-                    <h2 className="mt-2 text-2xl font-semibold text-white">Recent messages</h2>
+                    <p className="text-xs font-medium uppercase tracking-[0.24em] text-slate-400">Inbox</p>
+                    <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">Recent messages</h2>
                   </div>
                   <div className="flex items-center gap-3">
-                    <p className="text-sm text-slate-400">Showing {filteredEmails.length} message(s)</p>
-                    <button onClick={() => refresh()} className="rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-100">Refresh</button>
+                    <p className="text-sm text-slate-400">Showing {visibleEmails.length} message(s)</p>
+                    <button onClick={() => refresh()} className="inline-flex items-center rounded-2xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-sm font-medium text-sky-100 transition hover:border-sky-400/40 hover:bg-sky-500/15">Refresh</button>
                   </div>
                 </div>
 
-                <div className="grid gap-4">{content}</div>
+                <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                  <div className="grid gap-3">{content}</div>
+                </div>
               </section>
             </main>
 
-            <div className="xl:block hidden">
+            <div className="hidden h-full min-h-0 xl:flex">
               <EmailDrawer email={selectedEmail} onClose={() => setSelectedEmail(null)} />
             </div>
           </>
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-20 block xl:hidden border-t border-white/10 bg-slate-950/95 px-4 py-4">
+      <div className="fixed bottom-0 left-0 right-0 z-20 block border-t border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur-xl xl:hidden">
         <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-4">
           <p className="text-sm text-slate-400">Tap an email card to open details.</p>
           <p className="font-medium text-slate-100">Mobile-friendly inbox</p>
@@ -150,7 +166,7 @@ export default function Dashboard() {
       </div>
 
       {selectedEmail && (
-        <div className="xl:hidden fixed inset-0 z-40 bg-slate-950/70 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-40 bg-slate-950/70 p-4 backdrop-blur-sm xl:hidden">
           <div className="mx-auto max-w-lg">
             <EmailDrawer email={selectedEmail} onClose={() => setSelectedEmail(null)} />
           </div>

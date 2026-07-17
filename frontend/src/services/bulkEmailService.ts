@@ -20,6 +20,10 @@ export async function fetchActivityLog(): Promise<ActivityLogEntry[]> {
   return Array.isArray(response.data) ? response.data : []
 }
 
+export async function clearActivityLog(): Promise<void> {
+  await api.delete('/api/activity-log')
+}
+
 export async function sendBulkEmail(payload: {
   subject: string
   body: string

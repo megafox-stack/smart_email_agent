@@ -13,7 +13,8 @@ export default function EmailSummary({ emailDetail }: EmailSummaryProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [summary, setSummary] = useState<string | null>(null)
-
+  const [generationTime, setGenerationTime] = useState<number | null>(null)
+  
   useEffect(() => {
     let mounted = true
 
@@ -25,18 +26,24 @@ export default function EmailSummary({ emailDetail }: EmailSummaryProps) {
 
       const { id, subject, sender, body } = emailDetail
 
-      try {
-        setLoading(true)
+    try {
+  setLoading(true)
 
-        const aiSummary = await getSummaryForEmail(id, {
-          subject: subject || '',
-          sender: sender || '',
-          body: body || '',
-        })
+  const start = performance.now()
 
-        if (!mounted) return
+  const aiSummary = await getSummaryForEmail(id, {
+    subject: subject || '',
+    sender: sender || '',
+    body: body || '',
+  })
 
-        setSummary(aiSummary || null)
+  const end = performance.now()
+
+  setGenerationTime(Number(((end - start) / 1000).toFixed(2)))
+
+  if (!mounted) return
+
+  setSummary(aiSummary || null)  
 
       } catch (err: any) {
 
@@ -75,11 +82,17 @@ export default function EmailSummary({ emailDetail }: EmailSummaryProps) {
 
       clearSummaryCache(emailDetail.id)
 
+      const start = performance.now()
+
       const aiSummary = await getSummaryForEmail(emailDetail.id, {
         subject: emailDetail.subject || '',
         sender: emailDetail.sender || '',
         body: emailDetail.body || '',
       })
+
+      const end = performance.now()
+
+      setGenerationTime(Number(((end - start) / 1000).toFixed(2)))
 
       setSummary(aiSummary)
 
@@ -139,6 +152,13 @@ export default function EmailSummary({ emailDetail }: EmailSummaryProps) {
           <p className="text-sm text-slate-400">
             Summary
           </p>
+          
+          {generationTime !== null && (
+  <div className="mt-1 flex items-center gap-4 text-xs text-slate-500">
+    <span>🤖 Llama 3.2:3B</span>
+    <span>⚡ {generationTime}s</span>
+  </div>
+)}
 
           <div className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-100">
 

@@ -6,6 +6,7 @@ from google.oauth2.credentials import Credentials
 import base64
 from email.message import EmailMessage
 from typing import Any
+import mimetypes
 
 
 def build_gmail_service(credentials: Credentials):
@@ -144,6 +145,7 @@ def send_email(
     cc: Optional[List[str]] = None,
     bcc: Optional[List[str]] = None,
     thread_id: str | None = None,
+    attachments: Optional[List[Dict[str, str]]] = None,
 ) -> Dict[str, Any]:
     """Send an email using the Gmail API. Returns the API response."""
     service = build_gmail_service(credentials=credentials)
@@ -156,6 +158,15 @@ def send_email(
             msg['Bcc'] = ', '.join(bcc)
         msg['Subject'] = subject
         msg.set_content(body)
+
+        for attachment in attachments or []:
+            filename = attachment.get('filename') or 'attachment'
+            content_type = attachment.get('contentType') or mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+            maintype, _, subtype = content_type.partition('/')
+            if not subtype:
+                maintype, subtype = 'application', 'octet-stream'
+            file_data = base64.b64decode(attachment.get('data', ''))
+            msg.add_attachment(file_data, maintype=maintype, subtype=subtype, filename=filename)
 
         raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
 

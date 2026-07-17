@@ -188,3 +188,19 @@ Return ONLY the rewritten email.
 """
 
     return _generate(prompt)
+
+
+def generate_contact_insights(name: str, email: str, context: str = "") -> str:
+    prompt = f"""
+You are an assistant that writes concise AI contact notes for a contact in an address book.
+
+Contact name: {name}
+Contact email: {email}
+
+Context: {context}
+
+Write 3 short bullet points (one sentence each) with helpful insights about this contact: who they are, typical topics, and suggested follow-ups.
+Keep it under 100 words. Return ONLY the bullet points.
+"""
+
+    return _generate(prompt)

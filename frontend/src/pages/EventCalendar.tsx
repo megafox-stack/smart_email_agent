@@ -13,9 +13,13 @@ import {
   EVENT_FILTERS,
   formatDateKey,
   loadExtractedCalendarEvents,
+  loadCalendarEvents,
+  saveCalendarEvent,
+  deleteCalendarEvent,
   type CalendarEvent,
   type CalendarEventFormData,
 } from '../services/calendarService'
+import EventModal from '../components/calendar/EventModal'
 
 type FilterLabel = (typeof EVENT_FILTERS)[number]['label']
 
@@ -31,9 +35,19 @@ export default function EventCalendar() {
   const [showForm, setShowForm] = useState(false)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
 
   useEffect(() => {
     loadEvents()
+  }, [])
+
+  useEffect(() => {
+    function onCalendarUpdated() {
+      void loadEvents()
+    }
+
+    window.addEventListener('calendar:updated', onCalendarUpdated as EventListener)
+    return () => window.removeEventListener('calendar:updated', onCalendarUpdated as EventListener)
   }, [])
 
   const filteredEvents = useMemo(() => {
@@ -56,11 +70,12 @@ export default function EventCalendar() {
     setError(null)
 
     try {
+      const persistedEvents = await loadCalendarEvents()
       const extractedEvents = await loadExtractedCalendarEvents()
-      setEvents((current) => {
-        const manualEvents = current.filter((event) => event.isManual)
-        return [...manualEvents, ...extractedEvents]
-      })
+      // merge persisted and extracted, prefer persisted when ids collide
+      const map = new Map<string, CalendarEvent>()
+      ;[...persistedEvents, ...extractedEvents].forEach((ev) => map.set(ev.id, ev))
+      setEvents(Array.from(map.values()))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load calendar events.')
     } finally {
@@ -93,42 +108,28 @@ export default function EventCalendar() {
     setShowForm(true)
   }
 
-  function handleSaveEvent(formData: CalendarEventFormData, eventId?: string) {
-    if (eventId) {
-      setEvents((current) =>
-        current.map((event) =>
-          event.id === eventId
-            ? {
-                ...event,
-                title: formData.title.trim(),
-                date: formData.date,
-                time: formData.time.trim(),
-                category: formData.category,
-                description: formData.description.trim(),
-                priority: formData.priority,
-              }
-            : event,
-        ),
-      )
-      setSelectedDate(formData.date)
-      setEditingEvent(null)
-      setShowForm(false)
-      return
-    }
-
-    const event = createManualCalendarEvent(formData)
-    setEvents((current) => [event, ...current])
-    setSelectedDate(event.date)
-    setMonthDate(new Date(event.date))
+  async function handleSaveEvent(formData: CalendarEventFormData, eventId?: string) {
+    await saveCalendarEvent(formData, eventId)
     setShowForm(false)
+    setEditingEvent(null)
+    await loadEvents()
   }
 
-  function handleDeleteEvent(eventId: string) {
+  async function handleDeleteEvent(eventId: string) {
+    await deleteCalendarEvent(eventId)
     setEvents((current) => current.filter((event) => event.id !== eventId))
     if (editingEvent?.id === eventId) {
       setEditingEvent(null)
       setShowForm(false)
     }
+    if (selectedEvent?.id === eventId) setSelectedEvent(null)
+  }
+
+  function handleSelectEvent(event: CalendarEvent) {
+    setSelectedEvent(event)
+    setSelectedDate(event.date)
+    setShowForm(false)
+    setEditingEvent(null)
   }
 
   function handleViewEmail(event: CalendarEvent) {
@@ -262,6 +263,16 @@ export default function EventCalendar() {
             <EmailDrawer email={selectedEmail} onClose={() => setSelectedEmail(null)} />
           </div>
         </div>
+      )}
+
+      {selectedEvent && (
+        <EventModal
+          event={selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          onEdit={(e) => { setEditingEvent(e); setShowForm(true); setSelectedEvent(null) }}
+          onDelete={(id) => handleDeleteEvent(id)}
+          onViewEmail={(e) => handleViewEmail(e)}
+        />
       )}
     </div>
   )

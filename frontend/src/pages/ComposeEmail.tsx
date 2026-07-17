@@ -25,9 +25,27 @@ export default function ComposeEmail() {
   const [bcc, setBcc] = useState('')
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
+  const [attachments, setAttachments] = useState<Array<{ filename: string; contentType: string; data: string }>>([])
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  async function handleAttachmentChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files || [])
+    const nextAttachments = await Promise.all(
+      files.map(async (file) => ({
+        filename: file.name,
+        contentType: file.type || 'application/octet-stream',
+        data: await fileToBase64(file),
+      })),
+    )
+    setAttachments((current) => [...current, ...nextAttachments])
+    event.target.value = ''
+  }
+
+  function removeAttachment(filename: string) {
+    setAttachments((current) => current.filter((attachment) => attachment.filename !== filename))
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -62,6 +80,7 @@ export default function ComposeEmail() {
       bcc: parseEmailList(bcc),
       subject: subject.trim(),
       body: body.trim(),
+      attachments,
     }
 
     try {
@@ -151,6 +170,26 @@ export default function ComposeEmail() {
               className="mt-2 w-full rounded-[2rem] border border-slate-800 bg-slate-900/90 px-4 py-4 text-sm text-slate-100 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
             />
           </label>
+
+          <label className="block text-sm text-slate-300">
+            <span className="text-slate-400">Attachments</span>
+            <input
+              type="file"
+              multiple
+              onChange={handleAttachmentChange}
+              className="mt-2 w-full rounded-3xl border border-dashed border-slate-700 bg-slate-900/90 px-4 py-3 text-sm text-slate-300 file:mr-4 file:rounded-2xl file:border-0 file:bg-sky-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:border-sky-500"
+            />
+            {attachments.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {attachments.map((attachment) => (
+                  <span key={attachment.filename} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900 px-3 py-1 text-xs text-slate-200">
+                    {attachment.filename}
+                    <button type="button" onClick={() => removeAttachment(attachment.filename)} className="text-slate-400 hover:text-white">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </label>
         </div>
 
         {error && (
@@ -178,4 +217,14 @@ export default function ComposeEmail() {
       </form>
     </section>
   )
+}
+
+async function fileToBase64(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer()
+  let binary = ''
+  const bytes = new Uint8Array(buffer)
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte)
+  })
+  return btoa(binary)
 }

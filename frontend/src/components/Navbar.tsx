@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react'
+import { Search, Mail, RefreshCw, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import api from '../services/api'
 
@@ -12,46 +12,76 @@ export default function Navbar({ searchTerm, onSearchChange }: NavbarProps) {
 
   useEffect(() => {
     let mounted = true
+
     async function fetchProfile() {
       try {
         const res = await api.get('/profile')
         if (!mounted) return
         setEmail(res.data.email || null)
-      } catch (e) {
-        // ignore - show generic when unauthenticated
-      }
+      } catch {}
     }
+
     fetchProfile()
-    return () => { mounted = false }
+
+    return () => {
+      mounted = false
+    }
   }, [])
 
   const initial = email ? email.split('@')[0].charAt(0).toUpperCase() : 'U'
   const display = email || 'User'
 
   return (
-    <header className="flex flex-col gap-5 rounded-[2rem] border border-white/10 bg-slate-950/80 p-5 shadow-soft sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-sm uppercase tracking-[0.24em] text-sky-400/80">Dashboard</p>
-        <h1 className="mt-2 text-2xl font-semibold text-white">AI Gmail Assistant</h1>
-      </div>
+    <header className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-4 shadow-[0_18px_60px_rgba(2,6,23,0.5)] backdrop-blur-xl lg:p-5">
+      <div className="flex flex-col gap-5">
+        <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-300">Welcome Back</p>
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
+              <Mail className="h-3.5 w-3.5" />
+              Gmail Connected
+            </span>
+          </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <label className="relative block w-full max-w-xl">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="search"
-            value={searchTerm}
-            onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search emails by subject or sender"
-            className="w-full rounded-3xl border border-slate-800 bg-slate-900/90 py-3 pl-11 pr-4 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
-          />
-        </label>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-sky-300" />
+            <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl lg:text-[2rem]">
+              AI Email Automation Platform
+            </h1>
+          </div>
 
-        <div className="flex items-center gap-3 rounded-3xl bg-slate-900/80 px-4 py-3 text-slate-100 shadow-sm ring-1 ring-white/10">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-800 text-sky-300">{initial}</div>
-          <div className="text-sm">
-            <p className="text-slate-400">Signed in as</p>
-            <p className="font-semibold text-white">{display}</p>
+          <p className="max-w-xl text-sm leading-6 text-slate-400 lg:text-[15px]">
+            Manage emails, AI insights and security from one place.
+          </p>
+        </div>
+
+        <div className="flex w-full flex-col gap-3">
+          <div className="relative w-full">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-500" />
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search emails..."
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/70 py-2.5 pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-sky-500/60 focus:bg-slate-950"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button className="inline-flex items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-2 text-sm font-medium text-sky-100 transition hover:border-sky-400/40 hover:bg-sky-500/15">
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
+
+            <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-400 font-semibold text-white shadow-lg shadow-sky-500/20">
+                {initial}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-400">Signed in</p>
+                <p className="max-w-[180px] truncate text-sm font-semibold text-white">{display}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -2,9 +2,17 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import api from '../services/api'
 import axios from 'axios'
 import type { Email } from '../types/email'
+import { fetchDashboardStats } from '../services/dashboardService'
 
 interface EmailResponse {
   emails: Email[]
+}
+
+interface DashboardStats {
+  totalRecipients: number
+  emailsSent: number
+  pending: number
+  failed: number
 }
 
 export type ErrorState = { message: string; status?: number } | null
@@ -16,6 +24,12 @@ export function useEmails() {
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null)
   const [activeFolder, setActiveFolder] = useState<string>('Inbox')
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
+    totalRecipients: 0,
+    emailsSent: 0,
+    pending: 0,
+    failed: 0,
+  })
 
   // helper to determine folder/category for an email
   const categorize = useCallback((email: Email) => {
@@ -116,6 +130,23 @@ export function useEmails() {
     fetchEmails()
   }, [fetchEmails])
 
+  useEffect(() => {
+    let active = true
+    fetchDashboardStats()
+      .then((stats) => {
+        if (active) setDashboardStats(stats)
+      })
+      .catch(() => {
+        if (active) {
+          setDashboardStats({ totalRecipients: 0, emailsSent: 0, pending: 0, failed: 0 })
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
   const filteredEmails = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase()
 
@@ -136,12 +167,16 @@ export function useEmails() {
   }, [emails, searchTerm, activeFolder])
 
   const stats = useMemo(() => {
-    const total = emails.length
     const important = emails.filter((e) => (e as any).category === 'Important').length
     const university = emails.filter((e) => (e as any).category === 'University').length
     const spam = emails.filter((e) => (e as any).category === 'Spam').length
-    return { total, important, university, spam }
-  }, [emails])
+    return {
+      total: dashboardStats.totalRecipients,
+      important: dashboardStats.emailsSent,
+      university: dashboardStats.pending,
+      spam: dashboardStats.failed,
+    }
+  }, [emails, dashboardStats])
 
   return {
     emails,
