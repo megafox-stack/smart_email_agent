@@ -287,30 +287,12 @@ Version Control| Git & GitHub
 
 📁 Project Structure
 
-smart-email-automation-agent/
-│
-├── main.py
-│
-├── email_handler.py
-├── ai_model.py
-├── automation.py
-├── calendar_manager.py
-├── config.py
-│
-├── requirements.txt
-├── .env
-├── .gitignore
-│
-├── screenshots/
-│   ├── dashboard.png
-│   ├── ai-analysis.png
-│   ├── automated-response.png
-│   ├── calendar.png
-│   └── bulk-email.png
-│
-└── README.md
+frontend:
+<img width="286" height="385" alt="image" src="https://github.com/user-attachments/assets/32657786-b63b-41cc-9434-6e0f7d3873a9" />
 
----
+backend:
+<img width="334" height="581" alt="image" src="https://github.com/user-attachments/assets/81f21ab8-a70e-4a16-9d4a-6c3e1ec73bd8" />
+
 
 🎯 Use Cases
 
