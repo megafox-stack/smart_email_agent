@@ -385,9 +385,11 @@ Instead of treating email as a simple inbox, the system turns it into an automat
 
 ---
 
-📺 Demo
+📺 screenshot of the agent
 
-Project Demo:
+Project screenshots:
+<img width="1917" height="845" alt="Screenshot 2026-07-20 205520" src="https://github.com/user-attachments/assets/a8e1cad9-b8fe-4454-a359-2fa5ed5c52b0" />
+<img width="1626" height="830" alt="Screenshot 2026-07-20 205048" src="https://github.com/user-attachments/assets/b1873db2-8568-43ab-b75d-8a49c0e7feaf" />
 
 
 
