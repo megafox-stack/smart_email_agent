@@ -209,7 +209,13 @@ __pycache__/
 
 Start the agent using:
 
-python main.py
+python start_master.bat
+or
+frontend: python start_frontend.bat
+backend: python start_backend.bat
+olloma server: start_ai.bat
+
+
 
 The system will:
 
