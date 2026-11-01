@@ -1,4 +1,4 @@
-🤖 Smart Email Automation Agent
+Smart Email Automation Agent
 
 AI-powered email automation for smarter communication, scheduling, and productivity.
 
@@ -8,9 +8,9 @@ Instead of manually reading, categorizing, responding to, and scheduling every e
 
 ---
 
-🌟 Key Features
+Key Features
 
-📩 Intelligent Email Processing
+Intelligent Email Processing
 
 Automatically retrieves and processes incoming emails, extracting important information such as:
 
@@ -21,7 +21,7 @@ Automatically retrieves and processes incoming emails, extracting important info
 - Meeting information
 - Action items
 
-🧠 AI-Powered Email Analysis
+AI-Powered Email Analysis
 
 Uses Ollama-based local LLMs to understand email content and determine the user's intent.
 
@@ -34,7 +34,7 @@ The system can identify whether an email requires:
 - Human review
 - Automated action
 
-⚡ Smart Automation
+Smart Automation
 
 Automatically executes actions based on the analyzed email.
 
@@ -55,7 +55,7 @@ Reply Schedule  Route
       ↓
    Calendar
 
-📢 Bulk Email Campaigns
+Bulk Email Campaigns
 
 Supports bulk email workflows for:
 
@@ -67,7 +67,7 @@ Supports bulk email workflows for:
 
 The system can be extended to support personalized content and campaign analytics.
 
-📅 Smart Calendar Integration
+Smart Calendar Integration
 
 The agent can detect scheduling information from emails and assist with calendar management.
 
@@ -77,7 +77,7 @@ For example:
 
 The system can identify the date, time, and event information and create a corresponding calendar event.
 
-🔐 Human-in-the-Loop
+Human-in-the-Loop
 
 Critical actions can be routed for human approval instead of being executed automatically.
 
@@ -85,7 +85,7 @@ This prevents potentially incorrect AI-generated responses or actions from being
 
 ---
 
-📸 Platform Screenshots
+Platform Screenshots
 
 Email Automation Dashboard
 
@@ -127,7 +127,7 @@ Manage large-scale email campaigns and automated outreach.
 
 ---
 
-🚀 Quick Start
+Quick Start
 
 Prerequisites
 
@@ -167,7 +167,7 @@ pip install -r requirements.txt
 
 ---
 
-🧠 Set Up Ollama
+Set Up Ollama
 
 Install Ollama and download a compatible model.
 
@@ -183,7 +183,7 @@ The application can then communicate with the local Ollama model for email analy
 
 ---
 
-⚙️ Environment Configuration
+Environment Configuration
 
 Create a ".env" file in the project root:
 
@@ -195,7 +195,7 @@ OLLAMA_HOST=http://localhost:11434
 
 CALENDAR_API_KEY=your_calendar_api_key
 
-«⚠️ Never commit ".env" files or API credentials to GitHub.»
+
 
 Add them to ".gitignore":
 
@@ -204,8 +204,7 @@ venv/
 __pycache__/
 
 ---
-
-▶️ Running the Application
+Running the Application
 
 Start the agent using:
 
@@ -272,7 +271,7 @@ The system will:
 
 ---
 
-🛠️ Tech Stack
+tech Stack
 
 Component| Technology
 Language| Python
@@ -285,7 +284,7 @@ Version Control| Git & GitHub
 
 ---
 
-📁 Project Structure
+Project Structure
 
 frontend:
 <img width="286" height="385" alt="image" src="https://github.com/user-attachments/assets/32657786-b63b-41cc-9434-6e0f7d3873a9" />
@@ -294,55 +293,54 @@ backend:
 <img width="334" height="581" alt="image" src="https://github.com/user-attachments/assets/81f21ab8-a70e-4a16-9d4a-6c3e1ec73bd8" />
 
 
-🎯 Use Cases
+Use Cases
 
-👨‍💼 Business Communication
+Business Communication
 
 Automatically process repetitive business emails and route important messages to the appropriate person.
 
-📅 Meeting Management
+Meeting Management
 
 Detect meeting requests and scheduling information and convert them into calendar events.
 
-📢 Marketing & Outreach
+Marketing & Outreach
 
 Manage bulk email campaigns and announcements.
 
-🎓 Education
+Education
 
 Automate repetitive communication between students, faculty, and administration.
 
-🏢 Organizations
+Organizations
 
 Reduce manual email processing and improve response times across departments.
 
-📬 Personal Productivity
+personal Productivity
 
 Automatically categorize emails, generate responses, create reminders, and manage scheduling.
 
 ---
 
-📊 Business Impact
+Business Impact
 
-⏱️ Saves Time
+Saves Time
 
 Reduces repetitive manual email processing and allows users to focus on higher-value tasks.
 
-🧠 AI-Assisted Decision Making
+AI-Assisted Decision Making
 
 Local AI models help understand email intent and recommend appropriate actions.
 
-🔒 Privacy-Focused AI
+Privacy-Focused AI
 
 Using Ollama/local LLMs provides the option to process email content locally rather than sending sensitive content to an external AI service.
-
-📈 Scalable Automation
+ Scalable Automation
 
 The architecture can be extended from a personal productivity tool into an organizational email automation platform.
 
 ---
 
-🔮 Future Improvements
+Future Improvements
 
 - [ ] Gmail API integration
 - [ ] Microsoft Outlook integration
@@ -362,7 +360,7 @@ The architecture can be extended from a personal productivity tool into an organ
 
 ---
 
-🔐 Security
+Security
 
 Security is an important part of the system because emails may contain sensitive information.
 
@@ -377,7 +375,7 @@ The application should:
 
 ---
 
-💡 Project Objective
+Project Objective
 
 The objective of Smart Email Automation Agent is to demonstrate how AI, local LLMs, email APIs, automation systems, and calendar services can work together to create an intelligent productivity platform.
 
@@ -385,7 +383,7 @@ Instead of treating email as a simple inbox, the system turns it into an automat
 
 ---
 
-📺 screenshot of the agent
+screenshot of the agent
 
 Project screenshots:
 <img width="1200" height="750" alt="Screenshot 2026-07-20 205520" src="https://github.com/user-attachments/assets/a8e1cad9-b8fe-4454-a359-2fa5ed5c52b0" />
@@ -394,9 +392,7 @@ Project screenshots:
 
 
 ---
-
-🤝 Contributing
-
+ Contributing
 Contributions are welcome.
 
 If you would like to improve the project:
@@ -409,7 +405,7 @@ If you would like to improve the project:
 
 ---
 
-👨‍💻 Author
+Author
 
 Archit Naik
 
